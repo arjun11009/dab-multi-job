@@ -1,7 +1,6 @@
 import sys
-import os
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append("/Workspace/Users/ranaarju0031@gmail.com/.bundle/multi-job-poc/dev/files/src")
 
 from common.reader import create_sample_data
 from common.validator import validate_not_null

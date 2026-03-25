@@ -1,8 +1,7 @@
 import sys
-import os
 
-# Add src folder to Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add project root (DAB automatically places files correctly)
+sys.path.append("/Workspace/Users/ranaarju0031@gmail.com/.bundle/multi-job-poc/dev/files/src")
 
 from common.reader import create_sample_data
 from common.writer import log_output
