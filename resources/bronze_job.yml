@@ -7,6 +7,7 @@ resources:
         - task_key: bronze_task
           spark_python_task:
             python_file: ${workspace.file_path}/src/bronze/ingest.py
+          environment_key: default   # ✅ THIS WAS MISSING
 
       environments:
         - environment_key: default
