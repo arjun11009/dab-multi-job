@@ -6,7 +6,7 @@ echo "🔍 Detecting changes..."
 
 git fetch origin main
 
-CHANGED_FILES=$(git diff --name-only origin/main...HEAD | tr -d '\r')
+CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr -d '\r')
 
 echo "📂 Changed files:"
 echo "$CHANGED_FILES"

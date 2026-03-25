@@ -18,3 +18,4 @@ log_output(df_clean, "Silver")
 
 print("Silver job completed")
 print("Testing the silver chnages in the files ")
+print("Adding the file to chnage the struture along side it")
