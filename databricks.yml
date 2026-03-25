@@ -1,0 +1,14 @@
+bundle:
+  name: multi-job-poc
+
+targets:
+  dev:
+    workspace:
+      host: https://adb-7405618722459462.2.azuredatabricks.net
+
+sync:
+  include:
+    - src/
+
+include:
+  - resources/*.yml

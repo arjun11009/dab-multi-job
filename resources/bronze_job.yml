@@ -1,0 +1,14 @@
+resources:
+  jobs:
+    bronze_job:
+      name: bronze_job
+
+      tasks:
+        - task_key: bronze_task
+          spark_python_task:
+            python_file: ${workspace.file_path}/src/bronze/ingest.py
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"

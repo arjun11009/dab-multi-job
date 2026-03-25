@@ -1,0 +1,14 @@
+resources:
+  jobs:
+    silver_job:
+      name: silver_job
+
+      tasks:
+        - task_key: silver_task
+          spark_python_task:
+            python_file: ${workspace.file_path}/src/silver/transform.py
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
