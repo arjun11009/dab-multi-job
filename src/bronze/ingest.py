@@ -19,8 +19,5 @@ print("bronze updated test")
 print("Pushing code to test the dab change request")
 print("trying to test the file is it is executable")
 print("THis is what we git to check")
-<<<<<<< HEAD
 print("This is the test commit")
-=======
 print("Want to chekc if it works")
->>>>>>> feature/test-branch
