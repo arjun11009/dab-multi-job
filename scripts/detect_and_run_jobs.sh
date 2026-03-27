@@ -2,53 +2,67 @@
 
 set -e
 
-echo "🔍 Detecting changes..."
+echo "Detecting changes..."
 
 git fetch origin main
 
+# Use commit-level diff (IMPORTANT)
 CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr -d '\r')
 
-echo "📂 Changed files:"
+echo "Changed files:"
 echo "$CHANGED_FILES"
 
-RUN_BRONZE=false
-RUN_SILVER=false
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RESOURCE_DIR="$SCRIPT_DIR/../resources"
 
-# Detect changes
-while IFS= read -r file; do
+JOBS_TO_RUN=()
 
-  if [[ "$file" == src/bronze/* ]]; then
-    RUN_BRONZE=true
-  fi
+# Loop through all meta files
+for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
-  if [[ "$file" == src/silver/* ]]; then
-    RUN_SILVER=true
-  fi
+  job_name=$(jq -r '.job_name' "$meta_file" | tr -d '\r')
 
-  if [[ "$file" == src/common/* ]]; then
-    RUN_BRONZE=true
-    RUN_SILVER=true
-  fi
+  echo "Checking job: $job_name"
 
-done <<< "$CHANGED_FILES"
+  paths=$(jq -r '.paths[]' "$meta_file" | tr -d '\r')
 
-# If nothing changed
-if ! $RUN_BRONZE && ! $RUN_SILVER; then
-  echo "✅ No impacted jobs"
+  while IFS= read -r changed; do
+    changed_clean=$(echo "$changed" | xargs)
+
+    while IFS= read -r path; do
+      path_clean=$(echo "$path" | xargs)
+
+      # Match directory prefix
+      if [[ "$changed_clean" == "$path_clean"* ]]; then
+        echo " Match found: $changed_clean → $job_name"
+        JOBS_TO_RUN+=("$job_name")
+      fi
+
+    done <<< "$paths"
+
+  done <<< "$CHANGED_FILES"
+
+done
+
+# Remove duplicates
+JOBS_TO_RUN=($(printf "%s\n" "${JOBS_TO_RUN[@]}" | sort -u))
+
+if [ ${#JOBS_TO_RUN[@]} -eq 0 ]; then
+  echo "No impacted jobs"
   exit 0
 fi
 
-echo "🚀 Jobs to run:"
+echo "Jobs to run:"
+printf '%s\n' "${JOBS_TO_RUN[@]}"
 
-$RUN_BRONZE && echo "bronze_job"
-$RUN_SILVER && echo "silver_job"
-
-echo "📦 Deploying bundle..."
+echo "Deploying bundle..."
 databricks bundle deploy
 
-echo "🏃 Running jobs..."
+echo "Running jobs..."
 
-$RUN_BRONZE && databricks bundle run bronze_job
-$RUN_SILVER && databricks bundle run silver_job
+for job in "${JOBS_TO_RUN[@]}"; do
+  echo "Running $job"
+  databricks bundle run "$job"
+done
 
-echo "✅ Done"
+echo "Done"

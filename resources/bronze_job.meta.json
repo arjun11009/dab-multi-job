@@ -1,0 +1,7 @@
+{
+  "job_name": "bronze_job",
+  "paths": [
+    "src/bronze/",
+    "src/common/"
+  ]
+}
