@@ -15,4 +15,3 @@ df = create_sample_data(spark)
 log_output(df, "Bronze")
 
 print("Bronze job completed")
-print("bronze updated test")
