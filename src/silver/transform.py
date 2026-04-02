@@ -18,3 +18,4 @@ log_output(df_clean, "Silver")
 
 print("Silver job completed")
 print("Testing the silver changes in the files ")
+print("Adding the job change check")
