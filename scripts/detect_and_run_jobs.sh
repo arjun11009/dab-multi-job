@@ -6,8 +6,8 @@ echo "Detecting changes..."
 
 git fetch origin main
 
-# Use commit-level diff (IMPORTANT)
-CHANGED_FILES=$(git diff --name-only origin/main~1 origin/main | tr -d '\r')
+
+CHANGED_FILES=$(git diff --name-only origin/main~1...HEAD | tr -d '\r')
 
 echo "Changed files:"
 echo "$CHANGED_FILES"
