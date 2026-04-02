@@ -16,7 +16,3 @@ log_output(df, "Bronze")
 
 print("Bronze job completed")
 print("bronze updated test")
-print("Pushing code to test the dab change request")
-print("trying to test the file is it is executable")
-print("THis is what we git to check")
-print("Want to chekc if it works")
