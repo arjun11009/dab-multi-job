@@ -4,7 +4,7 @@ set -e
 
 echo "Detecting changes..."
 
-
+# Check git 
 if ! command -v git &> /dev/null; then
   echo "ERROR: git is not installed"
   exit 1
@@ -13,12 +13,13 @@ fi
 # Fetch latest main
 git fetch origin main
 
-
-CHANGED_FILES=$(git diff --name-only origin/main...HEAD | tr -d '\r')
+# Detect changes AFTER merge
+CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr -d '\r')
 
 echo "Changed files:"
 echo "$CHANGED_FILES"
 
+# Exit if no changes
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changes detected"
   exit 0
@@ -31,10 +32,10 @@ JOBS_TO_RUN=()
 
 echo "Scanning meta files..."
 
-# Loop through all meta files
+# Loop through meta files
 for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
-
+  # Extract job name
   job_name=$(grep -oP '"job_name"\s*:\s*"\K[^"]+' "$meta_file")
 
   if [ -z "$job_name" ]; then
@@ -44,12 +45,15 @@ for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
   echo "Checking job: $job_name"
 
-
+  # path extraction
   paths=$(grep -oP '"paths"\s*:\s*\[[^]]*\]' "$meta_file" \
         | sed 's/.*\[//' \
         | sed 's/\]//' \
         | tr ',' '\n' \
-        | tr -d '" ' )
+        | sed 's/"//g' \
+        | sed 's/^ *//;s/ *$//')
+
+  job_matched=false
 
   # Loop through changed files
   while IFS= read -r changed; do
@@ -59,14 +63,20 @@ for meta_file in "$RESOURCE_DIR"/*.meta.json; do
     while IFS= read -r path; do
       path_clean=$(echo "$path" | xargs)
 
-      # Match directory prefix
-      if [[ "$changed_clean" == "$path_clean"* ]]; then
+      # Safe prefix match
+      if [[ -n "$path_clean" && "$changed_clean" == "$path_clean"* ]]; then
         echo " Match found: $changed_clean → $job_name"
         JOBS_TO_RUN+=("$job_name")
+        job_matched=true
         break
       fi
 
     done <<< "$paths"
+
+    #Break outer loop once job matched
+    if [ "$job_matched" = true ]; then
+      break
+    fi
 
   done <<< "$CHANGED_FILES"
 
