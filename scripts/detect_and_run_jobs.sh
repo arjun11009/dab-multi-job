@@ -4,7 +4,7 @@ set -e
 
 echo "Detecting changes..."
 
-# Ensure git is available
+
 if ! command -v git &> /dev/null; then
   echo "ERROR: git is not installed"
   exit 1
@@ -13,13 +13,12 @@ fi
 # Fetch latest main
 git fetch origin main
 
-# ✅ Correct diff (branch vs main)
+
 CHANGED_FILES=$(git diff --name-only origin/main...HEAD | tr -d '\r')
 
 echo "Changed files:"
 echo "$CHANGED_FILES"
 
-# If no changes, exit early
 if [ -z "$CHANGED_FILES" ]; then
   echo "No changes detected"
   exit 0
@@ -35,7 +34,7 @@ echo "Scanning meta files..."
 # Loop through all meta files
 for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
-  # ✅ Extract job_name (no jq)
+
   job_name=$(grep -oP '"job_name"\s*:\s*"\K[^"]+' "$meta_file")
 
   if [ -z "$job_name" ]; then
@@ -45,9 +44,12 @@ for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
   echo "Checking job: $job_name"
 
-  # ✅ Extract paths (no jq)
+
   paths=$(grep -oP '"paths"\s*:\s*\[[^]]*\]' "$meta_file" \
-          | grep -oP '"\K[^"]+')
+        | sed 's/.*\[//' \
+        | sed 's/\]//' \
+        | tr ',' '\n' \
+        | tr -d '" ' )
 
   # Loop through changed files
   while IFS= read -r changed; do
@@ -90,7 +92,7 @@ databricks bundle deploy
 echo ""
 echo "Running jobs..."
 
-# Run jobs (safe execution)
+# Run jobs 
 for job in "${JOBS_TO_RUN[@]}"; do
   echo "Running $job"
   databricks bundle run "$job" || echo "WARNING: Job $job failed"
