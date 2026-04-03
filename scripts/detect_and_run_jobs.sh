@@ -6,24 +6,55 @@ echo "=============================="
 echo " Detecting changes..."
 echo "=============================="
 
-# Validate git
+# ==============================
+# Validate dependencies
+# ==============================
 if ! command -v git &> /dev/null; then
   echo "ERROR: git is not installed"
   exit 1
 fi
 
-# Validate jq (enterprise requirement)
 if ! command -v jq &> /dev/null; then
   echo "ERROR: jq is not installed (required for JSON parsing)"
   exit 1
 fi
 
-# Fetch latest main
-echo "Fetching latest main..."
-git fetch origin main
+# ==============================
+# Change Detection Strategy
+# ==============================
+echo ""
+echo "Determining diff strategy..."
 
-# Detect all changes from main (MR-safe)
-CHANGED_FILES=$(git diff --name-only origin/main...HEAD | tr -d '\r')
+if [ -n "$CI" ]; then
+  echo "Running in CI environment"
+
+  if [ -n "$CI_COMMIT_BEFORE_SHA" ] && [ -n "$CI_COMMIT_SHA" ]; then
+    echo "Using GitLab CI diff"
+    CHANGED_FILES=$(git diff --name-only "$CI_COMMIT_BEFORE_SHA" "$CI_COMMIT_SHA" | tr -d '\r')
+
+  elif [ -n "$GITHUB_SHA" ]; then
+    echo "Using GitHub Actions diff"
+    CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr -d '\r')
+
+  else
+    echo "CI detected but fallback to HEAD diff"
+    CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr -d '\r')
+  fi
+
+else
+  echo "Running locally"
+
+  if git rev-parse HEAD^2 >/dev/null 2>&1; then
+    echo "Merge commit detected → using HEAD~1"
+    CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr -d '\r')
+  else
+    echo "Normal commit → using HEAD~1"
+    CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | tr -d '\r')
+  fi
+fi
+
+# Remove empty lines
+CHANGED_FILES=$(echo "$CHANGED_FILES" | sed '/^\s*$/d')
 
 echo ""
 echo "Changed files:"
@@ -36,7 +67,9 @@ if [ -z "$CHANGED_FILES" ]; then
   exit 0
 fi
 
+# ==============================
 # Resolve directories
+# ==============================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESOURCE_DIR="$SCRIPT_DIR/../resources"
 
@@ -52,13 +85,14 @@ echo "=============================="
 echo " Scanning meta files..."
 echo "=============================="
 
-# Loop through meta files
+# ==============================
+# Process meta files
+# ==============================
 for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
   echo ""
   echo "Processing meta file: $meta_file"
 
-  # Extract job name
   job_name=$(jq -r '.job_name' "$meta_file")
 
   if [ -z "$job_name" ] || [ "$job_name" == "null" ]; then
@@ -68,28 +102,23 @@ for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
   echo "Checking job: $job_name"
 
-  # Extract paths
   paths=$(jq -r '.paths[]' "$meta_file")
 
   job_matched=false
 
-  # Loop through changed files
+  # Loop changed files
   while IFS= read -r changed; do
     changed_clean=$(echo "$changed" | sed 's|^\./||' | xargs)
 
-    # Loop through paths
+    # Loop paths
     while IFS= read -r path; do
       path_clean=$(echo "$path" | sed 's|^\./||' | xargs)
 
-      # Skip empty
       if [[ -z "$path_clean" ]]; then
         continue
       fi
 
-      # DEBUG (can comment later)
-      echo "Comparing:"
-      echo "  Changed: [$changed_clean]"
-      echo "  Path:    [$path_clean]"
+      # ---- MATCH LOGIC ----
 
       # Directory match
       if [[ "$path_clean" == */ ]]; then
@@ -111,7 +140,6 @@ for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
     done <<< "$paths"
 
-    # Break outer loop if matched
     if [ "$job_matched" = true ]; then
       break
     fi
@@ -120,7 +148,9 @@ for meta_file in "$RESOURCE_DIR"/*.meta.json; do
 
 done
 
+# ==============================
 # Remove duplicates
+# ==============================
 JOBS_TO_RUN=($(printf "%s\n" "${JOBS_TO_RUN[@]}" | sort -u))
 
 echo ""
@@ -128,11 +158,11 @@ echo "=============================="
 echo " Job Selection Summary"
 echo "=============================="
 
-# Fallback (enterprise safety)
+# ==============================
+# Fallback strategy
+# ==============================
 if [ ${#JOBS_TO_RUN[@]} -eq 0 ]; then
   echo "No impacted jobs detected"
-
-  # Optional fallback (recommended in enterprise)
   echo "Fallback: Running ALL jobs"
 
   JOBS_TO_RUN=()
@@ -142,7 +172,6 @@ if [ ${#JOBS_TO_RUN[@]} -eq 0 ]; then
     JOBS_TO_RUN+=("$job_name")
   done
 
-  # Remove duplicates again
   JOBS_TO_RUN=($(printf "%s\n" "${JOBS_TO_RUN[@]}" | sort -u))
 fi
 
@@ -151,6 +180,9 @@ echo "Jobs to run:"
 echo "------------------------------"
 printf '%s\n' "${JOBS_TO_RUN[@]}"
 
+# ==============================
+# Deploy bundle
+# ==============================
 echo ""
 echo "=============================="
 echo " Deploying bundle..."
@@ -158,16 +190,18 @@ echo "=============================="
 
 databricks bundle deploy
 
+# ==============================
+# Run jobs
+# ==============================
 echo ""
 echo "=============================="
 echo " Running jobs..."
 echo "=============================="
 
-# Execute jobs
 for job in "${JOBS_TO_RUN[@]}"; do
   echo ""
-  echo " Running job: $job"
-  databricks bundle run "$job" || echo " WARNING: Job $job failed"
+  echo "Running job: $job"
+  databricks bundle run "$job" || echo "WARNING: Job $job failed"
 done
 
 echo ""
