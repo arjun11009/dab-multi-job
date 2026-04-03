@@ -12,4 +12,6 @@ resources:
       environments:
         - environment_key: default
           spec:
+            dependencies:
+              - "-r ../requirements.txt"
             client: "1"
