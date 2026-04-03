@@ -2,6 +2,7 @@
   "job_name": "bronze_job",
   "paths": [
     "src/bronze/",
-    "src/common/"
+    "src/common/",
+    "dab-multi-job/requirements.txt"
   ]
 }
