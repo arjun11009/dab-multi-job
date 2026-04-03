@@ -3,6 +3,6 @@
   "paths": [
     "src/silver/",
     "src/common/",
-    "dab-multi-job/requirements.txt"
+    "requirements.txt"
   ]
 }
